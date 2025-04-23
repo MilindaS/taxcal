@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HS Code Tax Lookup</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; }
+        .search-box { margin-bottom: 20px; }
+        input[type="text"] { width: 300px; padding: 8px; }
+        button { padding: 8px 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Enter HS Code or Description">
+            <button onclick="searchTaxes()">Search</button>
+        </div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+    const sheetID = '1w7XZiD8nTS_7mlFlDdXGR-UsNh5SmSdbTQaS4TpoXNw';
+    const gid = '1090414935';
+    const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&gid=${gid}`;
+
+    function searchTaxes() {
+        const searchTerm = $('#searchInput').val().toLowerCase();
+        $('#results').html('Loading...');
+
+        fetch(url)
+            .then(res => res.text())
+            .then(text => {
+                const json = JSON.parse(text.substr(47).slice(0, -2));
+                const rows = json.table.rows;
+                
+                let matches = rows.filter(row => {
+                    const hsCode = row.c[4]?.v?.toString().toLowerCase();
+                    const description = row.c[5]?.v?.toLowerCase();
+                    return hsCode?.includes(searchTerm) || description?.includes(searchTerm);
+                });
+
+                displayResults(matches);
+            });
+    }
+
+    function displayResults(matches) {
+        if (matches.length === 0) {
+            $('#results').html('No matching records found');
+            return;
+        }
+
+        let html = `<table>
+            <tr>
+                <th>HS Code</th>
+                <th>Description</th>
+                <th>VAT</th>
+                <th>PAL</th>
+                <th>EIC</th>
+                <th>NBT</th>
+                <th>SUR</th>
+                <th>SSL</th>
+            </tr>`;
+
+        matches.forEach(row => {
+            html += `<tr>
+                <td>${row.c[4]?.v || ''}</td>
+                <td>${row.c[5]?.v || ''}</td>
+                <td>${row.c[13]?.v || ''}%</td>
+                <td>${row.c[14]?.v || ''}%</td>
+                <td>${row.c[15]?.v || ''}%</td>
+                <td>${row.c[17]?.v || ''}%</td>
+                <td>${row.c[18]?.v || ''}%</td>
+                <td>${row.c[19]?.v || ''}%</td>
+            </tr>`;
+        });
+
+        html += '</table>';
+        $('#results').html(html);
+    }
+    </script>
+</body>
+</html>
