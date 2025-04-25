@@ -1,129 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Allowance Calculator with AJAX</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        #inputForm {
-            margin-bottom: 20px;
-        }
-        table {
-            border-collapse: collapse;
-            width: 80%;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        .total-row {
-            font-weight: bold;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Allowance Calculator with AJAX & Refresh</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #inputForm {
+      margin-bottom: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 80%;
+      max-width: 800px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .total-row {
+      font-weight: bold;
+    }
+    button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 
-    <h2>Allowance Calculator</h2>
+  <h2>Allowance Calculator</h2>
 
-    <form id="inputForm">
-        <label for="usdRate">USD Rate:</label>
-        <input type="number" id="usdRate" name="usdRate" required><br><br>
+  <form id="inputForm">
+    <label for="usdRate">USD Rate:</label>
+    <input type="number" id="usdRate" name="usdRate" required step="0.01" min="0"><br><br>
 
-        <label for="allowanceCategory">Allowance Category:</label>
-        <select id="allowanceCategory" name="allowanceCategory" required>
-            <option value="125">A (125 USD)</option>
-            <option value="500">B (500 USD)</option>
-            <option value="1000">C (1000 USD)</option>
-            <option value="125">D2 (125 USD)</option>
-        </select><br><br>
+    <label for="allowanceCategory">Allowance Category:</label>
+    <select id="allowanceCategory" name="allowanceCategory" required>
+      <option value="" disabled selected>Select category</option>
+      <option value="125">A (125 USD)</option>
+      <option value="500">B (500 USD)</option>
+      <option value="1000">C (1000 USD)</option>
+      <option value="125">D2 (125 USD)</option>
+    </select><br><br>
 
-        <button type="button" id="calculateBtn">Calculate</button>
-    </form>
+    <button type="button" id="calculateBtn">Calculate</button>
+    <button type="button" id="refreshBtn" disabled>Refresh</button>
+  </form>
 
-    <table id="outputTable">
-        <thead>
-            <tr>
-                <th>J</th>
-                <th>K</th>
-                <th>L</th>
-            </tr>
-        </thead>
-        <tbody>
-            </tbody>
-    </table>
+  <table id="outputTable" aria-label="Allowance Calculation Output">
+    <thead>
+      <tr>
+        <th>J</th>
+        <th>K</th>
+        <th>L</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <script>
-        $(document).ready(function() {
-            // Load JSON data using AJAX
-            $.ajax({
-                url: 'data.json', // Replace with the actual path to your JSON file
-                dataType: 'json',
-                success: function(jsonData) {
-                    // Handle calculation when the button is clicked
-                    $('#calculateBtn').click(function() {
-                        var usdRate = parseFloat($('#usdRate').val());
-                        var allowanceCategory = parseFloat($('#allowanceCategory').val());
+  <script>
+    $(document).ready(function() {
+      let jsonData = [];
+      let usdRate = null;
+      let allowanceCategory = null;
 
-                        if (isNaN(usdRate) || isNaN(allowanceCategory)) {
-                            alert('Please enter valid numbers for USD Rate and Allowance Category.');
-                            return;
-                        }
+      // Load JSON data via AJAX
+      $.ajax({
+        url: 'data.json', // Adjust path if needed
+        dataType: 'json',
+        success: function(data) {
+          jsonData = data;
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          alert('Error loading JSON data: ' + textStatus);
+        }
+      });
 
-                        var totalValue = usdRate * allowanceCategory;
-                        var tableRows = '';
-                        var itemsUsed = [];
+      // Function to generate table with random items and scaled total
+      function populateTable() {
+        if (!jsonData.length) {
+          alert('Data not loaded yet. Please wait.');
+          return;
+        }
+        if (!usdRate || !allowanceCategory) {
+          alert('Please enter USD Rate and Allowance Category first.');
+          return;
+        }
 
-                        // Generate 33 rows
-                        for (var i = 1; i <= 33; i++) {
-                            // Pick a random item from jsonData
-                            var randomIndex = Math.floor(Math.random() * jsonData.length);
-                            var randomItem = jsonData[randomIndex];
+        const totalValue = usdRate * allowanceCategory;
+        const rowsCount = 33;
 
-                            // Ensure we don't use the same item twice (optional)
-                            while (itemsUsed.includes(randomIndex)) {
-                                randomIndex = Math.floor(Math.random() * jsonData.length);
-                                randomItem = jsonData[randomIndex];
-                            }
-                            itemsUsed.push(randomIndex);
+        // Pick random unique indices from jsonData
+        let indices = [];
+        while (indices.length < rowsCount && indices.length < jsonData.length) {
+          const randIndex = Math.floor(Math.random() * jsonData.length);
+          if (!indices.includes(randIndex)) {
+            indices.push(randIndex);
+          }
+        }
 
-                            // Calculate value for L column
-                            var itemValue = parseFloat(randomItem.Value);
-                            if (isNaN(itemValue)) {
-                                itemValue = 0; // Handle cases where value is not a number
-                            }
+        // If jsonData has fewer than 33 items, allow repeats
+        while (indices.length < rowsCount) {
+          indices.push(Math.floor(Math.random() * jsonData.length));
+        }
 
-                            tableRows += '<tr>';
-                            tableRows += '<td>' + i + '</td>'; // J column (row number)
-                            tableRows += '<td>' + randomItem.Item + '</td>'; // K column (item name)
-                            tableRows += '<td>' + itemValue.toFixed(2) + '</td>'; // L column (item value)
-                            tableRows += '</tr>';
-                        }
-
-                        // Add total row
-                        tableRows += '<tr class="total-row">';
-                        tableRows += '<td colspan="2">Total</td>';
-                        tableRows += '<td>' + totalValue.toFixed(2) + '</td>'; // Display the calculated total
-                        tableRows += '</tr>';
-
-                        // Update the table
-                        $('#outputTable tbody').html(tableRows);
-                    });
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    alert('Error loading JSON data: ' + textStatus + ', ' + errorThrown);
-                }
-            });
+        // Sum original values of chosen items
+        let originalSum = 0;
+        indices.forEach(i => {
+          let val = parseFloat(jsonData[i].Value);
+          if (isNaN(val)) val = 0;
+          originalSum += val;
         });
-    </script>
+
+        // Scale factor so sum(L) = totalValue
+        const scale = originalSum > 0 ? totalValue / originalSum : 0;
+
+        // Build table rows
+        let tbodyHtml = '';
+        let accumulated = 0;
+        for (let i = 0; i < rowsCount; i++) {
+          const item = jsonData[indices[i]];
+          let val = parseFloat(item.Value);
+          if (isNaN(val)) val = 0;
+          let scaledVal = val * scale;
+
+          // Fix last row rounding
+          if (i === rowsCount - 1) {
+            scaledVal = totalValue - accumulated;
+          } else {
+            scaledVal = parseFloat(scaledVal.toFixed(2));
+            accumulated += scaledVal;
+          }
+
+          tbodyHtml += `<tr>
+            <td>${i + 1}</td>
+            <td>${item.Item}</td>
+            <td style="text-align:right;">${scaledVal.toFixed(2)}</td>
+          </tr>`;
+        }
+
+        // Total row
+        tbodyHtml += `<tr class="total-row">
+          <td colspan="2">Total</td>
+          <td style="text-align:right;">${totalValue.toFixed(2)}</td>
+        </tr>`;
+
+        $('#outputTable tbody').html(tbodyHtml);
+      }
+
+      // Calculate button click
+      $('#calculateBtn').click(function() {
+        const usd = parseFloat($('#usdRate').val());
+        const allowance = parseFloat($('#allowanceCategory').val());
+
+        if (isNaN(usd) || usd <= 0) {
+          alert('Please enter a valid USD Rate.');
+          return;
+        }
+        if (isNaN(allowance) || allowance <= 0) {
+          alert('Please select a valid Allowance Category.');
+          return;
+        }
+
+        usdRate = usd;
+        allowanceCategory = allowance;
+
+        populateTable();
+        $('#refreshBtn').prop('disabled', false);
+      });
+
+      // Refresh button click - re-populate with new random items but same usdRate & allowanceCategory
+      $('#refreshBtn').click(function() {
+        if (!usdRate || !allowanceCategory) {
+          alert('Please calculate first.');
+          return;
+        }
+        populateTable();
+      });
+    });
+  </script>
 
 </body>
 </html>
